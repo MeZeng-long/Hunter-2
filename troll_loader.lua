@@ -1,6 +1,5 @@
 --[[
-    Proje: Hunter Script (Kategorize Edilmiş ve Gelişmiş Sürüm)
-    Özellikler: Sol Sekmeler (Combat, Visual, Misc), FOV, Smooth, Dinamik Teleport Listesi, Insert Toggle
+    Proje: SELUX Hub (Gelişmiş UI ve Tam Düzeltilmiş ESP Sürümü)
 ]]--
 
 local CoreGui = game:GetService("CoreGui")
@@ -10,216 +9,172 @@ local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- Hile İlk Açıldığında Hepsi Tamamen Kapalı Başlar
 local Config = {
     ESPEnabled = false,
     AimbotEnabled = false,
     GodmodeEnabled = false,
     NoclipEnabled = false,
-    InfiniteStamina = false,
     FlyEnabled = false,
-    HealEnabled = false,
-    FOV = 100,
-    Smoothness = 0.2,
-    SelectedTargetPlayer = nil
+    FOV = 110,
+    SmoothH = 24,
+    SmoothV = 28,
+    SelectedTarget = nil
 }
 
 --------------------------------------------------------------------------------
--- 1. AÇILIŞ BİLDİRİMİ
+-- 1. PROFESYONEL ESP SİSTEMİ (Tam Düzeltilmiş Aç/Kapat)
 --------------------------------------------------------------------------------
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Hunter Script",
-    Text = "Yüklendi! Menüyü açıp kapatmak için [INSERT] tuşuna basın.",
-    Duration = 5
-})
+local function clearAllESP()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Character and p.Character:FindFirstChild("SeluxESP") then
+            p.Character.SeluxESP:Destroy()
+        end
+    end
+end
 
---------------------------------------------------------------------------------
--- 2. ESP MODÜLÜ (Başlangıçta Kapalı)
---------------------------------------------------------------------------------
-local function createHunterESP(player)
+local function applyESPToPlayer(player)
     if player == LocalPlayer then return end
     
-    local function setupChar(char)
+    local function setup(char)
         if not char then return end
-        if char:FindFirstChild("HunterESP") then char.HunterESP:Destroy() end
+        if char:FindFirstChild("SeluxESP") then char.SeluxESP:Destroy() end
+        
+        if not Config.ESPEnabled then return end
         
         local folder = Instance.new("Folder")
-        folder.Name = "HunterESP"
+        folder.Name = "SeluxESP"
         folder.Parent = char
         
-        local highlight = Instance.new("Highlight")
-        highlight.Name = "Box"
-        highlight.Adornee = char
-        highlight.FillColor = Color3.fromRGB(255, 50, 50)
-        highlight.FillTransparency = 0.6
-        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-        highlight.Parent = folder
+        local hl = Instance.new("Highlight")
+        hl.Name = "Box"
+        hl.Adornee = char
+        hl.FillColor = Color3.fromRGB(0, 255, 120)
+        hl.FillTransparency = 0.7
+        hl.OutlineColor = Color3.fromRGB(0, 255, 120)
+        hl.Parent = folder
         
         local head = char:WaitForChild("Head", 5)
         if not head then return end
         
-        local billboard = Instance.new("BillboardGui")
-        billboard.Name = "InfoTag"
-        billboard.Adornee = head
-        billboard.Size = UDim2.new(0, 150, 0, 50)
-        billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-        billboard.AlwaysOnTop = true
-        billboard.Parent = folder
+        local bg = Instance.new("BillboardGui")
+        bg.Name = "Tag"
+        bg.Adornee = head
+        bg.Size = UDim2.new(0, 150, 0, 40)
+        bg.StudsOffset = Vector3.new(0, 2.5, 0)
+        bg.AlwaysOnTop = true
+        bg.Parent = folder
         
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(1, 0, 0, 20)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.Text = player.Name
-        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        nameLabel.TextSize = 13
-        nameLabel.Font = Enum.Font.Code
-        nameLabel.TextStrokeTransparency = 0.5
-        nameLabel.Parent = billboard
-        
-        local healthBarBg = Instance.new("Frame")
-        healthBarBg.Size = UDim2.new(0, 100, 0, 6)
-        healthBarBg.Position = UDim2.new(0.5, -50, 0, 22)
-        healthBarBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        healthBarBg.BorderSizePixel = 0
-        healthBarBg.Parent = billboard
-        
-        local healthBar = Instance.new("Frame")
-        healthBar.Size = UDim2.new(1, 0, 1, 0)
-        healthBar.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-        healthBar.BorderSizePixel = 0
-        healthBar.Parent = healthBarBg
-        
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.HealthChanged:Connect(function(health)
-                local percent = math.clamp(health / humanoid.MaxHealth, 0, 1)
-                healthBar.Size = UDim2.new(percent, 0, 1, 0)
-            end)
-        end
+        local txt = Instance.new("TextLabel")
+        txt.Size = UDim2.new(1, 0, 1, 0)
+        txt.BackgroundTransparency = 1
+        txt.Text = player.Name
+        txt.TextColor3 = Color3.fromRGB(255, 255, 255)
+        txt.TextSize = 12
+        txt.Font = Enum.Font.Code
+        txt.TextStrokeTransparency = 0.4
+        txt.Parent = bg
     end
 
-    player.CharacterAdded:Connect(setupChar)
-    if player.Character then task.spawn(function() setupChar(player.Character) end) end
+    player.CharacterAdded:Connect(setup)
+    if player.Character then task.spawn(function() setup(player.Character) end) end
 end
 
-local function toggleESP(state)
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p.Character and p.Character:FindFirstChild("HunterESP") then
-            p.Character.HunterESP.Enabled = state
-        elseif state then
-            createHunterESP(p)
-        end
+local function toggleESPState(state)
+    Config.ESPEnabled = state
+    if state then
+        for _, p in ipairs(Players:GetPlayers()) do applyESPToPlayer(p) end
+    else
+        clearAllESP()
     end
 end
 
-for _, p in ipairs(Players:GetPlayers()) do createHunterESP(p) end
-Players.PlayerAdded:Connect(createHunterESP)
-
+Players.PlayerAdded:Connect(applyESPToPlayer)
 
 --------------------------------------------------------------------------------
--- 3. ANA DÖNGÜ (Aimbot, Smooth, Godmode, Noclip, Heal, Fly)
+-- 2. ANA DÖNGÜ (Aimbot, Godmode, Noclip)
 --------------------------------------------------------------------------------
 RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     if not char then return end
     local humanoid = char:FindFirstChildOfClass("Humanoid")
-    local rootPart = char:FindFirstChild("HumanoidRootPart")
 
-    -- Aimbot + Smoothness + FOV
     if Config.AimbotEnabled then
-        local closestTarget = nil
-        local shortestDist = Config.FOV
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-                local screenPoint, onScreen = Camera:WorldToScreenPoint(player.Character.Head.Position)
+        local target = nil
+        local minDist = Config.FOV
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
+                local sp, onScreen = Camera:WorldToScreenPoint(p.Character.Head.Position)
                 if onScreen then
-                    local magnitude = (Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2.new(screenPoint.X, screenPoint.Y)).Magnitude
-                    if magnitude < shortestDist then
-                        shortestDist = magnitude
-                        closestTarget = player.Character.Head
+                    local mag = (Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2.new(sp.X, sp.Y)).Magnitude
+                    if mag < minDist then
+                        minDist = mag
+                        target = p.Character.Head
                     end
                 end
             end
         end
-        if closestTarget then
-            local targetCFrame = CFrame.new(Camera.CFrame.Position, closestTarget.Position)
-            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, Config.Smoothness)
+        if target then
+            local cf = CFrame.new(Camera.CFrame.Position, target.Position)
+            Camera.CFrame = Camera.CFrame:Lerp(cf, 1 / Config.SmoothH)
         end
     end
 
-    -- Godmode
     if Config.GodmodeEnabled and humanoid then
         humanoid.Health = humanoid.MaxHealth
     end
 
-    -- Heal (Tek seferlik can fulleme simülasyonu)
-    if Config.HealEnabled and humanoid then
-        humanoid.Health = humanoid.MaxHealth
-        Config.HealEnabled = false
-    end
-
-    -- Noclip
     if Config.NoclipEnabled then
         for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
+            if part:IsA("BasePart") then part.CanCollide = false end
         end
     end
 end)
 
-
 --------------------------------------------------------------------------------
--- 4. ARAYÜZ (GUI) VE SOL KATEGORİ SİSTEMİ
+-- 3. SELUX UI ARAYÜZÜ (Görsel Tasarım ve Insert Toggle)
 --------------------------------------------------------------------------------
-if CoreGui:FindFirstChild("HunterScriptGUI") then
-    CoreGui.HunterScriptGUI:Destroy()
-end
+if CoreGui:FindFirstChild("SeluxUI") then CoreGui.SeluxUI:Destroy() end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "HunterScriptGUI"
+ScreenGui.Name = "SeluxUI"
 ScreenGui.Parent = CoreGui
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 480, 0, 360)
-MainFrame.Position = UDim2.new(0.5, -240, 0.5, -180)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+MainFrame.Size = UDim2.new(0, 720, 0, 480)
+MainFrame.Position = UDim2.new(0.5, -360, 0.5, -240)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 16, 26)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 8)
-UICorner.Parent = MainFrame
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
 
--- Başlık
-local TitleBar = Instance.new("TextLabel")
-TitleBar.Size = UDim2.new(1, 0, 0, 35)
-TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-TitleBar.Text = "  H U N T E R  S C R I P T"
-TitleBar.TextColor3 = Color3.fromRGB(255, 60, 60)
-TitleBar.TextSize = 14
-TitleBar.Font = Enum.Font.Code
-TitleBar.TextXAlignment = Enum.TextXAlignment.Left
-TitleBar.Parent = MainFrame
+-- Üst Bar (SELUX LOGO VE SEKMELER)
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, 40)
+TopBar.BackgroundColor3 = Color3.fromRGB(24, 21, 34)
+TopBar.BorderSizePixel = 0
+TopBar.Parent = MainFrame
+Instance.new("UICorner", TopBar).CornerRadius = UDim.new(0, 8)
 
--- Sol Kategori Paneli
-local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0, 110, 1, -35)
-Sidebar.Position = UDim2.new(0, 0, 0, 35)
-Sidebar.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-Sidebar.BorderSizePixel = 0
-Sidebar.Parent = MainFrame
+local LogoLabel = Instance.new("TextLabel")
+LogoLabel.Size = UDim2.new(0, 100, 1, 0)
+LogoLabel.BackgroundTransparency = 1
+LogoLabel.Text = "  SELUX"
+LogoLabel.TextColor3 = Color3.fromRGB(160, 100, 255)
+LogoLabel.Font = Enum.Font.Code
+LogoLabel.TextSize = 16
+LogoLabel.Parent = TopBar
 
--- İçerik Konteynerleri (Sayfalar)
+-- Sekme Değiştirme Fonksiyonu için Konteynerler
 local Container = Instance.new("Frame")
-Container.Size = UDim2.new(1, -120, 1, -45)
-Container.Position = UDim2.new(0, 120, 0, 40)
+Container.Size = UDim2.new(1, -20, 1, -55)
+Container.Position = UDim2.new(0, 10, 0, 45)
 Container.BackgroundTransparency = 1
 Container.Parent = MainFrame
 
-local function createPage()
+local function createTabPage()
     local p = Instance.new("ScrollingFrame")
     p.Size = UDim2.new(1, 0, 1, 0)
     p.BackgroundTransparency = 1
@@ -230,44 +185,39 @@ local function createPage()
     return p
 end
 
-local combatPage = createPage()
-local visualPage = createPage()
-local miscPage = createPage()
-combatPage.Visible = true -- Varsayılan açık sayfa
+local aimPage = createTabPage()
+local espPage = createTabPage()
+local miscPage = createTabPage()
+aimPage.Visible = true -- Varsayılan Aim sekmesi açık
 
-local function switchPage(page)
-    combatPage.Visible = false
-    visualPage.Visible = false
+local function switchTab(page)
+    aimPage.Visible = false
+    espPage.Visible = false
     miscPage.Visible = false
     page.Visible = true
 end
 
--- Sol Sekme Butonları
-local function createTabButton(name, posY, page)
+-- Üst Menü Sekme Butonları
+local function createTopTabBtn(name, posX, page)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 95, 0, 30)
-    btn.Position = UDim2.new(0, 7, 0, posY)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+    btn.Size = UDim2.new(0, 70, 0, 30)
+    btn.Position = UDim2.new(0, posX, 0, 5)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 30, 48)
     btn.Text = name
     btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    btn.TextSize = 12
     btn.Font = Enum.Font.Code
-    btn.Parent = Sidebar
+    btn.TextSize = 12
+    btn.Parent = TopBar
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 4)
-    c.Parent = btn
-    
-    btn.MouseButton1Click:Connect(function()
-        switchPage(page)
-    end)
+    btn.MouseButton1Click:Connect(function() switchTab(page) end)
 end
 
-createTabButton("Combat", 15, combatPage)
-createTabButton("Visual", 55, visualPage)
-createTabButton("Misc", 95, miscPage)
+createTopTabBtn("AIM", 110, aimPage)
+createTopTabBtn("ESP", 190, espPage)
+createTopTabBtn("MISC", 270, miscPage)
 
--- Insert Tuşu ile Menü Gizleme / Gösterme
+-- Insert Tuşu ile Menüyü Gizle/Göster
 UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.Insert then
         MainFrame.Visible = not MainFrame.Visible
@@ -275,196 +225,192 @@ UserInputService.InputBegan:Connect(function(input)
 end)
 
 --------------------------------------------------------------------------------
--- 5. SAYFA İÇERİKLERİ VE BUTONLAR (Açık/Kapalı Yazılı)
+-- 4. SEKME İÇERİKLERİ (Görseldeki Gibi Switch Butonları)
 --------------------------------------------------------------------------------
 
--- COMBAT SEKMESİ (Aimbot, FOV, Smooth)
-local function addCombatElements()
-    local yPos = 10
-    
-    -- Aimbot Butonu
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 330, 0, 30)
-    btn.Position = UDim2.new(0, 0, 0, yPos)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    btn.Text = "Aimbot: Kapalı"
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize, btn.Font = 12, Enum.Font.Code
-    btn.Parent = combatPage
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-    
-    btn.MouseButton1Click:Connect(function()
-        Config.AimbotEnabled = not Config.AimbotEnabled
-        btn.Text = Config.AimbotEnabled and "Aimbot: Açık" or "Aimbot: Kapalı"
-        btn.TextColor3 = Config.AimbotEnabled and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 255, 255)
-    end)
-    
-    yPos = yPos + 40
-    
-    -- FOV Bilgisi/Ayarı
-    local fovBtn = Instance.new("TextButton")
-    fovBtn.Size = UDim2.new(0, 330, 0, 30)
-    fovBtn.Position = UDim2.new(0, 0, 0, yPos)
-    fovBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    fovBtn.Text = "FOV Değiştir (Şu an: 100)"
-    fovBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    fovBtn.TextSize, fovBtn.Font = 12, Enum.Font.Code
-    fovBtn.Parent = combatPage
-    Instance.new("UICorner", fovBtn).CornerRadius = UDim.new(0, 4)
-    
-    fovBtn.MouseButton1Click:Connect(function()
-        Config.FOV = Config.FOV == 100 and 200 or (Config.FOV == 200 and 300 or 100)
-        fovBtn.Text = "FOV Değiştir (Şu an: " .. Config.FOV .. ")"
-    end)
-    
-    yPos = yPos + 40
-    
-    -- Smoothness Ayarı
-    local smoothBtn = Instance.new("TextButton")
-    smoothBtn.Size = UDim2.new(0, 330, 0, 30)
-    smoothBtn.Position = UDim2.new(0, 0, 0, yPos)
-    smoothBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    smoothBtn.Text = "Smoothness: 0.2 (Normal)"
-    smoothBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    smoothBtn.TextSize, smoothBtn.Font = 12, Enum.Font.Code
-    smoothBtn.Parent = combatPage
-    Instance.new("UICorner", smoothBtn).CornerRadius = UDim.new(0, 4)
-    
-    smoothBtn.MouseButton1Click:Connect(function()
-        if Config.Smoothness == 0.2 then
-            Config.Smoothness = 0.5
-            smoothBtn.Text = "Smoothness: 0.5 (Hızlı)"
-        elseif Config.Smoothness == 0.5 then
-            Config.Smoothness = 1.0
-            smoothBtn.Text = "Smoothness: 1.0 (Anlık/Snap)"
-        else
-            Config.Smoothness = 0.2
-            smoothBtn.Text = "Smoothness: 0.2 (Yumuşak)"
-        end
-    end)
-end
-addCombatElements()
-
-
--- VISUAL SEKMESİ (ESP)
-local function addVisualElements()
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 330, 0, 30)
-    btn.Position = UDim2.new(0, 0, 0, 10)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    btn.Text = "ESP: Kapalı"
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize, btn.Font = 12, Enum.Font.Code
-    btn.Parent = visualPage
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-    
-    btn.MouseButton1Click:Connect(function()
-        Config.ESPEnabled = not Config.ESPEnabled
-        toggleESP(Config.ESPEnabled)
-        btn.Text = Config.ESPEnabled and "ESP: Açık" or "ESP: Kapalı"
-        btn.TextColor3 = Config.ESPEnabled and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 255, 255)
-    end)
-end
-addVisualElements()
-
-
--- MISC SEKMESİ (Godmode, Fly, Noclip, Heal, Teleport Oyuncu Listesi)
-local function addMiscElements()
-    local yPos = 10
-    
-    local function createToggle(name, configKey)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 330, 0, 30)
-        btn.Position = UDim2.new(0, 0, 0, yPos)
-        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-        btn.Text = name .. ": Kapalı"
-        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btn.TextSize, btn.Font = 12, Enum.Font.Code
-        btn.Parent = miscPage
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+-- AIM SEKMESİ
+local function buildAimTab()
+    local y = 10
+    local function addToggle(text, callback)
+        local f = Instance.new("Frame")
+        f.Size = UDim2.new(0, 330, 0, 35)
+        f.Position = UDim2.new(0, 10, 0, y)
+        f.BackgroundColor3 = Color3.fromRGB(25, 22, 36)
+        f.Parent = aimPage
+        Instance.new("UICorner", f).CornerRadius = UDim.new(0, 6)
         
-        btn.MouseButton1Click:Connect(function()
-            Config[configKey] = not Config[configKey]
-            btn.Text = Config[configKey] and (name .. ": Açık") or (name .. ": Kapalı")
-            btn.TextColor3 = Config[configKey] and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 255, 255)
+        local l = Instance.new("TextLabel")
+        l.Size = UDim2.new(0, 250, 1, 0)
+        l.Position = UDim2.new(0, 10, 0, 0)
+        l.BackgroundTransparency = 1
+        l.Text = text
+        l.TextColor3 = Color3.fromRGB(220, 220, 220)
+        l.Font = Enum.Font.Code
+        l.TextSize = 12
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.Parent = f
+        
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.new(0, 50, 0, 22)
+        b.Position = UDim2.new(1, -60, 0.5, -11)
+        b.BackgroundColor3 = Color3.fromRGB(50, 40, 70)
+        b.Text = "OFF"
+        b.TextColor3 = Color3.fromRGB(150, 150, 150)
+        b.Font = Enum.Font.Code
+        b.TextSize = 11
+        b.Parent = f
+        Instance.new("UICorner", b).CornerRadius = UDim.new(1, 0)
+        
+        local state = false
+        b.MouseButton1Click:Connect(function()
+            state = not state
+            b.Text = state and "ON" or "OFF"
+            b.BackgroundColor3 = state and Color3.fromRGB(130, 60, 255) or Color3.fromRGB(50, 40, 70)
+            b.TextColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150)
+            callback(state)
         end)
-        yPos = yPos + 40
+        y = y + 45
     end
     
-    createToggle("GodMode", "GodmodeEnabled")
-    createToggle("Noclip", "NoclipEnabled")
-    createToggle("Heal", "HealEnabled")
-    createToggle("Fly", "FlyEnabled")
+    addToggle("Aim assist (Aimbot)", function(v) Config.AimbotEnabled = v end)
+end
+buildAimTab()
+
+-- ESP SEKMESİ
+local function buildEspTab()
+    local y = 10
+    local f = Instance.new("Frame")
+    f.Size = UDim2.new(0, 330, 0, 35)
+    f.Position = UDim2.new(0, 10, 0, y)
+    f.BackgroundColor3 = Color3.fromRGB(25, 22, 36)
+    f.Parent = espPage
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0, 6)
     
-    -- TELEPORT ÖZELLİĞİ (Dinamik Oyuncu Listesi)
-    local tpLabel = Instance.new("TextLabel")
-    tpLabel.Size = UDim2.new(0, 330, 0, 20)
-    tpLabel.Position = UDim2.new(0, 0, 0, yPos)
-    tpLabel.BackgroundTransparency = 1
-    tpLabel.Text = "--- Oyuncu Teleport Listesi ---"
-    tpLabel.TextColor3 = Color3.fromRGB(255, 60, 60)
-    tpLabel.TextSize, tpLabel.Font = 12, Enum.Font.Code
-    tpLabel.Parent = miscPage
-    yPos = yPos + 25
+    local l = Instance.new("TextLabel")
+    l.Size = UDim2.new(0, 250, 1, 0)
+    l.Position = UDim2.new(0, 10, 0, 0)
+    l.BackgroundTransparency = 1
+    l.Text = "ESP enabled"
+    l.TextColor3 = Color3.fromRGB(220, 220, 220)
+    l.Font = Enum.Font.Code
+    l.TextSize = 12
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.Parent = f
     
-    -- Oyuncu Seçme Butonu (Tıkladıkça sunucudaki sıradaki oyuncuya geçer)
-    local targetBtn = Instance.new("TextButton")
-    targetBtn.Size = UDim2.new(0, 330, 0, 30)
-    targetBtn.Position = UDim2.new(0, 0, 0, yPos)
-    targetBtn.BackgroundColor3 = Color3.fromRGB(40, 30, 40)
-    targetBtn.Text = "Hedef Seç: (Kimse Seçilmedi)"
-    targetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    targetBtn.TextSize, targetBtn.Font = 12, Enum.Font.Code
-    targetBtn.Parent = miscPage
-    Instance.new("UICorner", targetBtn).CornerRadius = UDim.new(0, 4)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(0, 50, 0, 22)
+    b.Position = UDim2.new(1, -60, 0.5, -11)
+    b.BackgroundColor3 = Color3.fromRGB(50, 40, 70)
+    b.Text = "OFF"
+    b.TextColor3 = Color3.fromRGB(150, 150, 150)
+    b.Font = Enum.Font.Code
+    b.TextSize = 11
+    b.Parent = f
+    Instance.new("UICorner", b).CornerRadius = UDim.new(1, 0)
     
-    yPos = yPos + 40
-    
-    -- Işınlanma Butonu
-    local executeTpBtn = Instance.new("TextButton")
-    executeTpBtn.Size = UDim2.new(0, 330, 0, 30)
-    executeTpBtn.Position = UDim2.new(0, 0, 0, yPos)
-    executeTpBtn.BackgroundColor3 = Color3.fromRGB(60, 30, 30)
-    executeTpBtn.Text = "Seçilen Oyuncuya Işınlan"
-    executeTpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    executeTpBtn.TextSize, executeTpBtn.Font = 12, Enum.Font.Code
-    executeTpBtn.Parent = miscPage
-    Instance.new("UICorner", executeTpBtn).CornerRadius = UDim.new(0, 4)
-    
-    -- Oyuncu Listesini Döngüyle Değiştirme Mantığı
-    targetBtn.MouseButton1Click:Connect(function()
-        local playersList = Players:GetPlayers()
-        local validTargets = {}
-        for _, p in ipairs(playersList) do
-            if p ~= LocalPlayer then table.insert(validTargets, p) end
-        end
+    b.MouseButton1Click:Connect(function()
+        local newState = not Config.ESPEnabled
+        toggleESPState(newState)
+        b.Text = newState and "ON" or "OFF"
+        b.BackgroundColor3 = newState and Color3.fromRGB(130, 60, 255) or Color3.fromRGB(50, 40, 70)
+        b.TextColor3 = newState and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150)
+    end)
+end
+buildEspTab()
+
+-- MISC SEKMESİ (Godmode, Noclip, Teleport)
+local function buildMiscTab()
+    local y = 10
+    local function addToggle(text, callback)
+        local f = Instance.new("Frame")
+        f.Size = UDim2.new(0, 330, 0, 35)
+        f.Position = UDim2.new(0, 10, 0, y)
+        f.BackgroundColor3 = Color3.fromRGB(25, 22, 36)
+        f.Parent = miscPage
+        Instance.new("UICorner", f).CornerRadius = UDim.new(0, 6)
         
-        if #validTargets == 0 then
-            targetBtn.Text = "Sunucuda başka oyuncu yok!"
-            return
-        end
+        local l = Instance.new("TextLabel")
+        l.Size = UDim2.new(0, 250, 1, 0)
+        l.Position = UDim2.new(0, 10, 0, 0)
+        l.BackgroundTransparency = 1
+        l.Text = text
+        l.TextColor3 = Color3.fromRGB(220, 220, 220)
+        l.Font = Enum.Font.Code
+        l.TextSize = 12
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.Parent = f
         
-        -- Sıradaki oyuncuyu seç
-        local currentIndex = 1
-        for i, p in ipairs(validTargets) do
-            if p.Name == Config.SelectedTargetPlayer then
-                currentIndex = i + 1
-                break
-            end
-        end
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.new(0, 50, 0, 22)
+        b.Position = UDim2.new(1, -60, 0.5, -11)
+        b.BackgroundColor3 = Color3.fromRGB(50, 40, 70)
+        b.Text = "OFF"
+        b.TextColor3 = Color3.fromRGB(150, 150, 150)
+        b.Font = Enum.Font.Code
+        b.TextSize = 11
+        b.Parent = f
+        Instance.new("UICorner", b).CornerRadius = UDim.new(1, 0)
         
-        if currentIndex > #validTargets then currentIndex = 1 end
-        Config.SelectedTargetPlayer = validTargets[currentIndex].Name
-        targetBtn.Text = "Hedef: " .. Config.SelectedTargetPlayer
+        local state = false
+        b.MouseButton1Click:Connect(function()
+            state = not state
+            b.Text = state and "ON" or "OFF"
+            b.BackgroundColor3 = state and Color3.fromRGB(130, 60, 255) or Color3.fromRGB(50, 40, 70)
+            b.TextColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150)
+            callback(state)
+        end)
+        y = y + 45
+    end
+    
+    addToggle("GodMode", function(v) Config.GodmodeEnabled = v end)
+    addToggle("Noclip", function(v) Config.NoclipEnabled = v end)
+    
+    -- Oyuncu Teleport Dropdown Simülasyonu
+    y = y + 10
+    local tpBtn = Instance.new("TextButton")
+    tpBtn.Size = UDim2.new(0, 330, 0, 30)
+    tpBtn.Position = UDim2.new(0, 10, 0, y)
+    tpBtn.BackgroundColor3 = Color3.fromRGB(45, 35, 60)
+    tpBtn.Text = "Seçilen Oyuncu: Yok (Değiştirmek için tıkla)"
+    tpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tpBtn.Font = Enum.Font.Code
+    tpBtn.TextSize = 11
+    tpBtn.Parent = miscPage
+    Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 6)
+    
+    y = y + 40
+    local execTp = Instance.new("TextButton")
+    execTp.Size = UDim2.new(0, 330, 0, 30)
+    execTp.Position = UDim2.new(0, 10, 0, y)
+    execTp.BackgroundColor3 = Color3.fromRGB(100, 40, 40)
+    execTp.Text = "Işınlan (Teleport)"
+    execTp.TextColor3 = Color3.fromRGB(255, 255, 255)
+    execTp.Font = Enum.Font.Code
+    execTp.TextSize = 11
+    execTp.Parent = miscPage
+    Instance.new("UICorner", execTp).CornerRadius = UDim.new(0, 6)
+    
+    tpBtn.MouseButton1Click:Connect(function()
+        local list = Players:GetPlayers()
+        local valid = {}
+        for _, p in ipairs(list) do if p ~= LocalPlayer then table.insert(valid, p) end end
+        if #valid == 0 then tpBtn.Text = "Sunucuda kimse yok!" return end
+        
+        local idx = 1
+        for i, p in ipairs(valid) do
+            if p.Name == Config.SelectedTarget then idx = i + 1 break end
+        end
+        if idx > #valid then idx = 1 end
+        Config.SelectedTarget = valid[idx].Name
+        tpBtn.Text = "Hedef: " .. Config.SelectedTarget
     end)
     
-    -- Seçilen Oyuncuya Işınlanma Tetikleyicisi
-    executeTpBtn.MouseButton1Click:Connect(function()
-        if not Config.SelectedTargetPlayer then return end
-        local targetP = Players:FindFirstChild(Config.SelectedTargetPlayer)
+    execTp.MouseButton1Click:Connect(function()
+        if not Config.SelectedTarget then return end
+        local targetP = Players:FindFirstChild(Config.SelectedTarget)
         if targetP and targetP.Character and targetP.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character.HumanoidRootPart.CFrame = targetP.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
         end
     end)
 end
-addMiscElements()
+buildMiscTab()
